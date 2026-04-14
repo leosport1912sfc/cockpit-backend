@@ -1,3 +1,0 @@
-git add .
-git commit -m "Corrigindo o SQLite e adicionando gitignore"
-git push origin main
