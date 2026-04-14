@@ -3,32 +3,43 @@ const cors = require('cors');
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 
-const app = express();
-const PORT = process.env.PORT || 3001;
+require('dotenv').config();
+const { spfi, SPFI } = require("@pnp/sp");
+const { SPFetchClient } = require("@pnp/nodejs");
+require("@pnp/sp/webs");
+require("@pnp/sp/lists");
+require("@pnp/sp/items");
 
-app.use(cors());
-app.use(express.json());
+// Configurando o "Crachá" do Servidor para falar com a Microsoft
+const sp = spfi().using(SPFetchClient(
+  process.env.SITE_URL,
+  process.env.CLIENT_ID,
+  process.env.CLIENT_SECRET
+));
 
-// A Chave do nosso Cofre: Conectando ao banco SQLite
-let db;
-(async () => {
-    db = await open({
-        filename: './frota.sqlite', // Ele vai criar esse arquivo magicamente na sua pasta!
-        driver: sqlite3.Database
+// A Rota que recebe os dados do Wizard e salva na Nuvem
+app.post('/api/pedidos', async (req, res) => {
+  try {
+    const { solicitante, destino, dataPartida, justificativa, tipoServico } = req.body;
+
+    // Criando o registro na lista transacional conforme o PDF [cite: 31, 35]
+    const iar = await sp.web.lists.getByTitle("SolicitacaoVeiculosForms").items.add({
+      Title: `REQ-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      NomeSolicitante: solicitante,
+      emailSolicitante: emailSolicitante,
+      EnderecoDestino: destino,
+      DataViagem: dataPartida,
+      TipoServico: tipoServico || "Administrativo",
+      Justificativa: justificativa,
+      StatusFluxo: "Pendente" // O início de tudo 
     });
 
-    // Criando a tabela de Pedidos se ela ainda não existir
-    await db.exec(`
-    CREATE TABLE IF NOT EXISTS pedidos (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      solicitante TEXT,
-      destino TEXT,
-      dataPartida TEXT,
-      status TEXT
-    )
-  `);
-    console.log("📦 Nosso cofre SQLite está aberto e pronto para guardar segredos!");
-})();
+    res.json({ success: true, id: iar.data.ID });
+  } catch (error) {
+    console.error("Erro no SharePoint:", error);
+    res.status(500).json({ error: "O cofre da Microsoft recusou o acesso." });
+  }
+});
 
 // --- AS NOSSAS ROTAS DE AMOR ---
 
