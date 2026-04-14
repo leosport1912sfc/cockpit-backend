@@ -13,6 +13,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@azure/msal-node": "^5.1.2",
     "@pnp/nodejs": "^4.18.0",
     "@pnp/sp": "^4.18.0",
     "cors": "^2.8.6",
