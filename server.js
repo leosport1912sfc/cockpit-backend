@@ -33,28 +33,40 @@ const sp = spfi(process.env.SITE_URL).using(SPDefault({
   }
 }));
 
-// A Rota POST (ÚNICA E VERDADEIRA) que recebe os dados e salva na Nuvem
+// A Rota POST (ÚNICA E VERDADEIRA) que recebe os dados do Frontend e salva na Nuvem
 app.post('/api/pedidos', async (req, res) => {
   try {
-    // Pegando os dados que o frontend enviou, incluindo o e-mail!
-    const { solicitante, emailSolicitante, destino, dataPartida, justificativa, tipoServico } = req.body;
+    // 1. Recebendo a "carga" completa do Frontend (Next.js)
+    const dados = req.body;
 
-    // Criando o registro na lista transacional conforme a arquitetura
-    const iar = await sp.web.lists.getByTitle("SolicitacaoVeiculosForms").items.add({
+    // 2. Criando o registro na lista transacional com os nomes EXATOS do seu SharePoint
+    const iar = await sp.web.lists.getByTitle("SolicitacaoVeiculos Forms").items.add({
       Title: `REQ-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      NomeSolicitante: solicitante,
-      emailSolicitante: emailSolicitante, // Preenchendo a coluna para o Power Automate ler!
-      EnderecoDestino: destino,
-      DataViagem: dataPartida,
-      TipoServico: tipoServico || "Administrativo",
-      Justificativa: justificativa,
-      StatusFluxo: "Pendente" 
+      Author: dados.NomeSolicitante,
+      emailSolicitante: dados.emailSolicitante,
+      AreaTrabalho: dados.SetorSolicitante,
+      ChefiaAreaSolicitante: dados.ChefiaAreaSolicitante, // O e-mail do chefe para o Automate!
+      TelefoneSolicccitante: dados.TelefoneSolicitante,
+      TipoServico: dados.TipoServico, // Ex: "Transporte - Van/Minibus (7+ lugares)"
+      QuantasPessoas: Number(dados.QuantasPessoas),
+      DatadaViagemeHorario: dados.DatadaViagem, // Formato YYYY-MM-DD
+      Hor_x00e1_riodaPartida: dados.HorariodaPartida,
+      Endere_x00e7_odeOrigem: dados.EnderecodeOrigem,
+      NomedoLocaldeDestino: dados.NomedoLocaldeDestino,
+      Endere_x00e7_odoLocaldeDestino: dados.EndereçodoLocaldeDestino,
+      Munic_x00ed_pio: dados.Municipio,
+      Itiner_x00e1_rioSeHouver: dados.ItinerarioSeHouver,
+      NecessitaRetorno: dados.NecessitaRetorno, // "Sim" ou "Não"
+      MotoristaVaiAguardar: dados.MotoristaVaiAguardar, // "Sim" ou "Não"
+      Hor_x00e1_riodoT_x00e9_rminodoEvento: dados.HorariodoTerminodoEvento,
+      Hor_x00e1_riodoRetorno: dados.HorariodoRetorno,
+      StatusFluxo: "Pendente" // Mantemos o status inicial do fluxo
     });
 
-    res.json({ success: true, id: iar.data.ID, mensagem: 'Salvo no SharePoint com tecnologia Azure!' });
+    res.json({ success: true, id: iar.data.ID, mensagem: 'Salvo com sucesso e pronto para a chefia aprovar!' });
   } catch (error) {
     console.error("Erro no SharePoint:", error);
-    res.status(500).json({ error: "O cofre da Microsoft recusou o nosso beijo." });
+    res.status(500).json({ error: "Falha na comunicação com o banco do Governo." });
   }
 });
 
